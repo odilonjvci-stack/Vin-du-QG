@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Cave Vin Pro</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+
+<style>
+:root{
+    --bg:#0f172a;
+    --dark:#020617;
+    --card:#1e293b;
+    --green:#22c55e;
+    --danger:#ef4444;
+    --text:#ffffff;
+    --muted:#cbd5e1;
+}
+*{box-sizing:border-box}
+body{
+    margin:0;
+    font-family:Arial, sans-serif;
+    background:var(--bg);
+    color:var(--text);
+}
+#loginPage{
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:var(--dark);
+    padding:20px;
+}
+.login-box{
+    background:var(--card);
+    width:100%;
+    max-width:360px;
+    padding:25px;
+    border-radius:18px;
+    text-align:center;
+}
+.login-box h1{color:var(--green)}
+.login-box input{
+    width:100%;
+    padding:14px;
+    border:none;
+    border-radius:12px;
+    margin:12px 0;
+    font-size:17px;
+}
+.login-box button{
+    width:100%;
+    padding:14px;
+    border:none;
+    border-radius:12px;
+    background:var(--green);
+    font-weight:bold;
+    font-size:17px;
+    color:#020617;
+}
+#app{display:none}
+header{
+    background:var(--dark);
+    text-align:center;
+    padding:28px 15px;
+    border-bottom:3px solid var(--green);
+}
+header h1{
+    margin:0;
+    font-size:36px;
+    color:var(--green);
+}
+header p{
+    font-size:18px;
+    margin:12px 0 4px;
+}
+.role{
+    color:var(--muted);
+    font-size:14px;
+}
+.logout{
+    background:var(--danger);
+    color:white;
+    border:none;
+    border-radius:10px;
+    padding:9px 14px;
+    margin-top:10px;
+    font-weight:bold;
+}
+nav{
+    display:flex;
+    gap:13px;
+    padding:15px;
+    background:#020617;
+    overflow-x:auto;
+}
+nav button{
+    min-width:120px;
+    padding:15px;
+    border:none;
+    border-radius:13px;
+    background:#1e293b;
+    color:white;
+    font-weight:bold;
+    font-size:17px;
+}
+nav button.active{
+    background:var(--green);
+    color:#020617;
+}
+section{
+    display:none;
+    padding:15px;
+}
+section.active{display:block}
+.stats{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:15px;
+}
+.stat{
+    background:var(--dark);
+    padding:25px 10px;
+    border-radius:15px;
+    text-align:center;
+}
+.stat h2{
+    margin:0;
+    color:var(--green);
+    font-size:24px;
+}
+.stat p{
+    font-size:18px;
+}
+.card{
+    background:var(--card);
+    padding:18px;
+    border-radius:17px;
+    margin-top:15px;
+}
+.card h2,.card h3{margin-top:0}
+input,select{
+    width:100%;
+    padding:13px;
+    margin:7px 0;
+    border:none;
+    border-radius:10px;
+    font-size:16px;
+}
+.action{
+    width:100%;
+    padding:13px;
+    margin-top:8px;
+    border:none;
+    border-radius:10px;
+    background:var(--green);
+    color:#020617;
+    font-weight:bold;
+    font-size:16px;
+}
+.delete{
+    background:var(--danger);
+    color:white;
+    border:none;
+    border-radius:8px;
+    padding:8px 10px;
+}
+.reset-danger{
+    width:100%;
+    background:var(--danger);
+    color:white;
+    border:none;
+    border-radius:10px;
+    padding:13px;
+    margin-top:8px;
+    font-weight:bold;
+    font-size:16px;
+}
+table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:10px;
+    font-size:14px;
+}
+th,td{
+    border-bottom:1px solid #334155;
+    padding:9px;
+    text-align:left;
+}
+.alert{
+    color:#facc15;
+    font-weight:bold;
+}
+.small{
+    font-size:12px;
+    color:var(--muted);
+}
+</style>
+</head>
+
+<body>
+
+<div id="loginPage">
+    <div class="login-box">
+        <h1>🍷 Cave Vin Pro</h1>
+        <p>Connexion sécurisée</p>
+        <input type="password" id="password" placeholder="Mot de passe">
+        <button onclick="login()">Se connecter</button>
+        <p id="error" style="color:#ef4444;font-weight:bold;"></p>
+    </div>
+</div>
+
+<div id="app">
+
+<header>
+    <h1>🍷 Cave Vin Pro</h1>
+    <p>Gestion de stock, ventes et bénéfices</p>
+    <div class="role" id="roleText"></div>
+    <button class="logout" onclick="logout()">Déconnexion</button>
+</header>
+
+<nav>
+    <button class="active" onclick="showPage('dashboard',this)">Accueil</button>
+    <button onclick="showPage('stock',this)">Stock</button>
+    <button onclick="showPage('vente',this)">Vente</button>
+    <button onclick="showPage('historique',this)">Historique</button>
+</nav>
+
+<section id="dashboard" class="active">
+    <div class="stats">
+        <div class="stat">
+            <h2 id="totalProduits">0</h2>
+            <p>Produits</p>
+        </div>
+        <div class="stat">
+            <h2 id="valeurStock">0 FCFA</h2>
+            <p>Valeur stock</p>
+        </div>
+        <div class="stat">
+            <h2 id="caTotal">0 FCFA</h2>
+            <p>Chiffre d'affaires</p>
+        </div>
+        <div class="stat">
+            <h2 id="benefTotal">0 FCFA</h2>
+            <p>Bénéfice</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>⚠️ Alertes stock faible</h2>
+        <div id="alertes">Aucune alerte pour le moment.</div>
+    </div>
+
+    <div class="card" id="adminResetBox">
+        <h2>🛠️ Réinitialisation Admin</h2>
+        <button class="action" onclick="resetVentes()">Réinitialiser ventes uniquement</button>
+        <button class="action" onclick="resetStock()">Réinitialiser stock uniquement</button>
+        <button class="reset-danger" onclick="resetTout()">Tout remettre à zéro</button>
+    </div>
+</section>
+
+<section id="stock">
+    <div class="card">
+        <h2>Ajouter un vin</h2>
+        <input id="nom" placeholder="Nom du vin">
+        <input id="categorie" placeholder="Catégorie : Rouge, Blanc, Rosé...">
+        <input id="achat" type="number" placeholder="Prix d'achat">
+        <input id="ventePrix" type="number" placeholder="Prix de vente">
+        <input id="quantite" type="number" placeholder="Quantité en stock">
+        <button class="action" onclick="ajouterVin()">Ajouter au stock</button>
+    </div>
+
+    <div class="card">
+        <h2>Liste des vins</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Vin</th>
+                    <th>Stock</th>
+                    <th>Vente</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="listeStock"></tbody>
+        </table>
+    </div>
+</section>
+
+<section id="vente">
+    <div class="card">
+        <h2>Enregistrer une vente</h2>
+        <select id="vinVendu"></select>
+        <input id="qteVendue" type="number" placeholder="Quantité vendue">
+        <button class="action" onclick="vendreVin()">Valider la vente</button>
+    </div>
+
+    <div class="card">
+        <h2>🔎 Filtrer l’historique des ventes</h2>
+
+        <label>Date précise</label>
+        <input type="date" id="filtreDate" onchange="filtrerHistorique()">
+
+        <label>Mois</label>
+        <input type="month" id="filtreMois" onchange="filtrerHistorique()">
+
+        <label>Année</label>
+        <input type="number" id="filtreAnnee" placeholder="Exemple : 2026" oninput="filtrerHistorique()">
+
+        <button class="reset-danger" onclick="viderFiltres()">Vider les filtres</button>
+    </div>
+
+    <div class="stats">
+        <div class="stat">
+            <h2 id="caFiltre">0 FCFA</h2>
+            <p>CA filtré</p>
+        </div>
+        <div class="stat">
+            <h2 id="benefFiltre">0 FCFA</h2>
+            <p>Bénéfice filtré</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Historique filtré</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Vin</th>
+                    <th>Qté</th>
+                    <th>Total</th>
+                    <th>Bénéfice</th>
+                </tr>
+            </thead>
+            <tbody id="historiqueFiltre">
+                <tr>
+                    <td colspan="5" class="small">Sélectionnez une date, un mois ou une année pour afficher l’historique.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section id="historique">
+    <div class="card">
+        <h2>Historique général des ventes</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Vin</th>
+                    <th>Qté</th>
+                    <th>Total</th>
+                    <th>Bénéfice</th>
+                </tr>
+            </thead>
+            <tbody id="listeVentes"></tbody>
+        </table>
+    </div>
+</section>
+
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyD-e1KDEvJgZAEroIzmxLUaoJIidsL-kcE",
+  authDomain: "vin-qg.firebaseapp.com",
+  projectId: "vin-qg",
+  storageBucket: "vin-qg.firebasestorage.app",
+  messagingSenderId: "393075567066",
+  appId: "1:393075567066:web:e980367cfdc162adc7f8e3"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+let roleUser = "";
+let vins = [];
+let ventes = [];
+let unsubscribeVins = null;
+let unsubscribeVentes = null;
+
+function format(n){
+    return Number(n || 0).toLocaleString("fr-FR") + " FCFA";
+}
+
+function login(){
+    let pass = document.getElementById("password").value;
+
+    if(pass === "9999"){
+        roleUser = "ADMIN";
+    }else if(pass === "1234"){
+        roleUser = "GERANTE";
+    }else{
+        document.getElementById("error").innerText = "Mot de passe incorrect";
+        return;
+    }
+
+    localStorage.setItem("roleUser", roleUser);
+
+    document.getElementById("loginPage").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    document.getElementById("roleText").innerText = "Connecté en tant que : " + roleUser;
+
+    ecouterFirebase();
+}
+
+function logout(){
+    localStorage.removeItem("roleUser");
+
+    if(unsubscribeVins){unsubscribeVins();}
+    if(unsubscribeVentes){unsubscribeVentes();}
+
+    location.reload();
+}
+
+function showPage(id,btn){
+    document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+
+    document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+
+    afficher();
+    filtrerHistorique();
+}
+
+function ecouterFirebase(){
+    if(unsubscribeVins){unsubscribeVins();}
+    if(unsubscribeVentes){unsubscribeVentes();}
+
+    unsubscribeVins = db.collection("vins")
+    .orderBy("createdAt","desc")
+    .onSnapshot(snapshot=>{
+        vins = [];
+        snapshot.forEach(doc=>{
+            vins.push({id:doc.id, ...doc.data()});
+        });
+        afficher();
+        filtrerHistorique();
+    });
+
+    unsubscribeVentes = db.collection("ventes")
+    .orderBy("createdAt","desc")
+    .onSnapshot(snapshot=>{
+        ventes = [];
+        snapshot.forEach(doc=>{
+            ventes.push({id:doc.id, ...doc.data()});
+        });
+        afficher();
+        filtrerHistorique();
+    });
+}
+
+function verifierAdminReset(){
+    let box = document.getElementById("adminResetBox");
+    if(box){
+        box.style.display = roleUser === "ADMIN" ? "block" : "none";
+    }
+}
+
+async function ajouterVin(){
+    let nom = document.getElementById("nom").value.trim();
+    let categorie = document.getElementById("categorie").value.trim();
+    let achat = Number(document.getElementById("achat").value);
+    let ventePrix = Number(document.getElementById("ventePrix").value);
+    let quantite = Number(document.getElementById("quantite").value);
+
+    if(!nom || !categorie || achat <= 0 || ventePrix <= 0 || quantite <= 0){
+        alert("Veuillez remplir correctement tous les champs");
+        return;
+    }
+
+    await db.collection("vins").add({
+        nom: nom,
+        categorie: categorie,
+        achat: achat,
+        ventePrix: ventePrix,
+        quantite: quantite,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        createdBy: roleUser
+    });
+
+    document.getElementById("nom").value = "";
+    document.getElementById("categorie").value = "";
+    document.getElementById("achat").value = "";
+    document.getElementById("ventePrix").value = "";
+    document.getElementById("quantite").value = "";
+}
+
+async function vendreVin(){
+    let id = document.getElementById("vinVendu").value;
+    let qte = Number(document.getElementById("qteVendue").value);
+
+    let vin = vins.find(v=>v.id === id);
+
+    if(!vin){
+        alert("Aucun vin sélectionné");
+        return;
+    }
+
+    if(qte <= 0){
+        alert("Quantité invalide");
+        return;
+    }
+
+    if(qte > Number(vin.quantite)){
+        alert("Stock insuffisant");
+        return;
+    }
+
+    let maintenant = new Date();
+    let total = qte * Number(vin.ventePrix);
+    let benefice = qte * (Number(vin.ventePrix) - Number(vin.achat));
+
+    let vinRef = db.collection("vins").doc(id);
+
+    await db.runTransaction(async transaction=>{
+        let doc = await transaction.get(vinRef);
+
+        if(!doc.exists){
+            throw new Error("Vin introuvable");
+        }
+
+        let stockActuel = Number(doc.data().quantite || 0);
+
+        if(qte > stockActuel){
+            throw new Error("Stock insuffisant");
+        }
+
+        transaction.update(vinRef,{
+            quantite: stockActuel - qte
+        });
+
+        let venteRef = db.collection("ventes").doc();
+
+        transaction.set(venteRef,{
+            date: maintenant.toLocaleString("fr-FR"),
+            dateISO: maintenant.toISOString().split("T")[0],
+            moisISO: maintenant.toISOString().slice(0,7),
+            annee: maintenant.getFullYear(),
+            vinId: id,
+            nom: vin.nom,
+            qte: qte,
+            total: total,
+            benefice: benefice,
+            vendeur: roleUser,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    }).catch(error=>{
+        alert(error.message);
+    });
+
+    document.getElementById("qteVendue").value = "";
+}
+
+async function supprimerVin(id){
+    if(roleUser !== "ADMIN"){
+        alert("Accès refusé : seule l’Admin peut supprimer.");
+        return;
+    }
+
+    if(confirm("Voulez-vous vraiment supprimer ce vin ?")){
+        await db.collection("vins").doc(id).delete();
+    }
+}
+
+async function resetVentes(){
+    if(roleUser !== "ADMIN"){
+        alert("Accès refusé : Admin uniquement.");
+        return;
+    }
+
+    if(confirm("Réinitialiser uniquement les ventes, le chiffre d'affaires et les bénéfices ?")){
+        let snap = await db.collection("ventes").get();
+        let batch = db.batch();
+
+        snap.forEach(doc=>{
+            batch.delete(doc.ref);
+        });
+
+        await batch.commit();
+        viderFiltres();
+        alert("Ventes, chiffre d'affaires et bénéfices remis à zéro.");
+    }
+}
+
+async function resetStock(){
+    if(roleUser !== "ADMIN"){
+        alert("Accès refusé : Admin uniquement.");
+        return;
+    }
+
+    if(confirm("Réinitialiser uniquement le stock ?")){
+        let snap = await db.collection("vins").get();
+        let batch = db.batch();
+
+        snap.forEach(doc=>{
+            batch.delete(doc.ref);
+        });
+
+        await batch.commit();
+        alert("Stock remis à zéro.");
+    }
+}
+
+async function resetTout(){
+    if(roleUser !== "ADMIN"){
+        alert("Accès refusé : Admin uniquement.");
+        return;
+    }
+
+    if(confirm("Attention : tout sera supprimé. Continuer ?")){
+        let snapVins = await db.collection("vins").get();
+        let snapVentes = await db.collection("ventes").get();
+
+        let batch = db.batch();
+
+        snapVins.forEach(doc=>{
+            batch.delete(doc.ref);
+        });
+
+        snapVentes.forEach(doc=>{
+            batch.delete(doc.ref);
+        });
+
+        await batch.commit();
+        viderFiltres();
+        alert("Toutes les données ont été remises à zéro.");
+    }
+}
+
+function afficher(){
+    verifierAdminReset();
+
+    let listeStock = document.getElementById("listeStock");
+    let vinVendu = document.getElementById("vinVendu");
+    let listeVentes = document.getElementById("listeVentes");
+    let alertes = document.getElementById("alertes");
+
+    listeStock.innerHTML = "";
+    vinVendu.innerHTML = "";
+    listeVentes.innerHTML = "";
+    alertes.innerHTML = "";
+
+    let valeurStock = 0;
+
+    vins.forEach(v=>{
+        valeurStock += Number(v.quantite || 0) * Number(v.achat || 0);
+
+        listeStock.innerHTML += `
+        <tr>
+            <td>
+                <b>${v.nom}</b><br>
+                <span class="small">${v.categorie}</span>
+            </td>
+            <td class="${Number(v.quantite) <= 5 ? 'alert' : ''}">${v.quantite}</td>
+            <td>${format(v.ventePrix)}</td>
+            <td>
+                ${
+                    roleUser === "ADMIN"
+                    ? `<button class="delete" onclick="supprimerVin('${v.id}')">X</button>`
+                    : `<span class="small">Non autorisé</span>`
+                }
+            </td>
+        </tr>`;
+
+        vinVendu.innerHTML += `<option value="${v.id}">${v.nom} - Stock : ${v.quantite}</option>`;
+
+        if(Number(v.quantite) <= 5){
+            alertes.innerHTML += `<p class="alert">⚠️ Stock faible : ${v.nom} (${v.quantite})</p>`;
+        }
+    });
+
+    let ca = 0;
+    let benef = 0;
+
+    ventes.forEach(v=>{
+        ca += Number(v.total || 0);
+        benef += Number(v.benefice || 0);
+
+        listeVentes.innerHTML += `
+        <tr>
+            <td>${v.date}<br><span class="small">${v.vendeur || ""}</span></td>
+            <td>${v.nom}</td>
+            <td>${v.qte}</td>
+            <td>${format(v.total)}</td>
+            <td>${format(v.benefice)}</td>
+        </tr>`;
+    });
+
+    document.getElementById("totalProduits").innerText = vins.length;
+    document.getElementById("valeurStock").innerText = format(valeurStock);
+    document.getElementById("caTotal").innerText = format(ca);
+    document.getElementById("benefTotal").innerText = format(benef);
+
+    if(alertes.innerHTML === ""){
+        alertes.innerHTML = "<p>Aucune alerte pour le moment.</p>";
+    }
+
+    if(vins.length === 0){
+        vinVendu.innerHTML = `<option value="">Aucun vin disponible</option>`;
+        listeStock.innerHTML = `
+        <tr>
+            <td colspan="4" class="small">Aucun vin enregistré.</td>
+        </tr>`;
+    }
+
+    if(ventes.length === 0){
+        listeVentes.innerHTML = `
+        <tr>
+            <td colspan="5" class="small">Aucune vente enregistrée.</td>
+        </tr>`;
+    }
+}
+
+function filtrerHistorique(){
+    let filtreDate = document.getElementById("filtreDate").value;
+    let filtreMois = document.getElementById("filtreMois").value;
+    let filtreAnnee = document.getElementById("filtreAnnee").value.trim();
+    let historique = document.getElementById("historiqueFiltre");
+
+    historique.innerHTML = "";
+
+    let ca = 0;
+    let benef = 0;
+
+    if(!filtreDate && !filtreMois && !filtreAnnee){
+        historique.innerHTML = `
+        <tr>
+            <td colspan="5" class="small">Sélectionnez une date, un mois ou une année pour afficher l’historique.</td>
+        </tr>`;
+        document.getElementById("caFiltre").innerText = format(0);
+        document.getElementById("benefFiltre").innerText = format(0);
+        return;
+    }
+
+    let resultats = ventes.filter(v=>{
+        let ok = true;
+
+        if(filtreDate){
+            ok = ok && v.dateISO === filtreDate;
+        }
+
+        if(filtreMois){
+            ok = ok && v.moisISO === filtreMois;
+        }
+
+        if(filtreAnnee){
+            ok = ok && String(v.annee) === filtreAnnee;
+        }
+
+        return ok;
+    });
+
+    if(resultats.length === 0){
+        historique.innerHTML = `
+        <tr>
+            <td colspan="5" class="small">Aucune vente trouvée pour ce filtre.</td>
+        </tr>`;
+        document.getElementById("caFiltre").innerText = format(0);
+        document.getElementById("benefFiltre").innerText = format(0);
+        return;
+    }
+
+    resultats.forEach(v=>{
+        ca += Number(v.total || 0);
+        benef += Number(v.benefice || 0);
+
+        historique.innerHTML += `
+        <tr>
+            <td>${v.date}<br><span class="small">${v.vendeur || ""}</span></td>
+            <td>${v.nom}</td>
+            <td>${v.qte}</td>
+            <td>${format(v.total)}</td>
+            <td>${format(v.benefice)}</td>
+        </tr>`;
+    });
+
+    document.getElementById("caFiltre").innerText = format(ca);
+    document.getElementById("benefFiltre").innerText = format(benef);
+}
+
+function viderFiltres(){
+    document.getElementById("filtreDate").value = "";
+    document.getElementById("filtreMois").value = "";
+    document.getElementById("filtreAnnee").value = "";
+    filtrerHistorique();
+}
+
+let savedRole = localStorage.getItem("roleUser");
+
+if(savedRole){
+    roleUser = savedRole;
+    document.getElementById("loginPage").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    document.getElementById("roleText").innerText = "Connecté en tant que : " + roleUser;
+    ecouterFirebase();
+}
+</script>
+
+</body>
+</html>
